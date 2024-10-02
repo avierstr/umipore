@@ -1,7 +1,7 @@
 # umipore
 <mark>This is a work in progress:</mark>
 
-==Demultiplexing based on barcodes , dual barcodes, primers is working, demultiplexing based on UMI's is still under construction.==
+<mark>Demultiplexing based on barcodes , dual barcodes, primers is working, demultiplexing based on UMI's is still under construction.</mark>
 
 Umipore is a tool to demultiplex Oxford Nanopore reads (or sequences from other platforms) based on barcodes, dual barcodes, primers or UMI's (unique molecular identifiers).
 
