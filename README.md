@@ -1,5 +1,5 @@
 # umipore
-==This is a work in progress:==
+<mark>This is a work in progress:</mark>
 
 ==Demultiplexing based on barcodes , dual barcodes, primers is working, demultiplexing based on UMI's is still under construction.==
 
