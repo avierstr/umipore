@@ -53,7 +53,7 @@ def check_version(version):
                   '| NEW VERSION OF umipore AVAILABLE                    |\n'
                   '| https://github.com/avierstr/umipore                 |\n'
                   '| Downloaded latest version as:                       |\n' 
-                  '|      ' + version_name + '                    |\n'
+                  '|      ' + version_name + '                           |\n'
                   '| Press ctrl-c to exit                                |\n'
                   ' =====================================================\n')
             t = 10
