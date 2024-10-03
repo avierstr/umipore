@@ -36,7 +36,7 @@ version = '2024-07-13'  # version of the script
 #==============================================================================
 def check_version(version):
     try:   
-        link = urllib.request.urlopen('https://github.com/avierstr/umipore/blob/main/umipore.py').read()
+        link = urllib.request.urlopen('https://raw.githubusercontent.com/avierstr/umipore/main/umipore.py').read()
         # find the version-date part of the last version on the webpage
         datepart = re.compile(r'(version.*?)(\d{4}-\d{2}-\d{2})(.*version of the script)')
         x = datepart.search(str(link))
