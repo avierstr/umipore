@@ -71,8 +71,22 @@ Demultiplex infile.fastq on 8 cores, reads with a minimum length of 500 bp, sequ
 
 `python3 umipore.py -i infile.fastq -np 8 -min 500 -sk lsk110 -bck nbd -bckn 6-12 -bc_os`
 
+Umipore will automatically split reads based on the middle adapter from the lsk110 kit in the command above.  If you also want to split on primers (amplicons ligated to each other, which happens a lot), you have to add a file named `middle.csv` in the input folder.  The file has the same format as the `custom.csv`.  You can reduce the number of primer possibilities in the file by masking the barcodes by NNN as in the example below.  In that cas only the last line (BCxx) has to be in the `middle.csv` file.  The file is automatically read by the script when present.
+```
+BC01,TCGAAGAAAGTTGTCGGTGTCTTTGTGACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGAAGAAAGTTGTCGGTGTCTTTGTGGATGGTCGATGACGGTTACCTTGTTACGACTT
+BC02,TCGTCGATTCCGTTTGTAGTCGTCTGTACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGTCGATTCCGTTTGTAGTCGTCTGTGATGGTCGATGACGGTTACCTTGTTACGACTT
+BC03,TCGGAGTCTTGTGTCCCAGTTACCAGGACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGGAGTCTTGTGTCCCAGTTACCAGGGATGGTCGATGACGGTTACCTTGTTACGACTT
+BC04,TCGTTCGGATTCTATCGTGTTTCCCTAACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGTTCGGATTCTATCGTGTTTCCCTAGATGGTCGATGACGGTTACCTTGTTACGACTT
+BCxx,TCGNNNNNNNNNNNNNNNNNNNNNNNNACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGNNNNNNNNNNNNNNNNNNNNNNNNGATGGTCGATGACGGTTACCTTGTTACGACTT
+```
 ### Todo:
 
 ### Release notes:
+2024-11-19:
+- Improvement in splitting reads based on middle adapters and primers.  When there was a 100% match and a 99% match in the read, it was only splitting the 100% match.  Now it is splitting all.
+
+2024-02-10:
+- initial release
 
 (Written with [StackEdit](https://stackedit.io/).)
+
