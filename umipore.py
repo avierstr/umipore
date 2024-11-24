@@ -32,7 +32,7 @@ import re
 import psutil
 import urllib.request
 #==============================================================================
-version = '2024-07-13'  # version of the script
+version = '2024-11-19'  # version of the script
 #==============================================================================
 def check_version(version):
     try:   
@@ -365,39 +365,58 @@ def process_middle_barcodes(readlist, middle_adapters, middle_front_bc, middle_r
     '''
     min_length = args.minlength
     search_list = [x for x in [middle_adapters, middle_front_bc, middle_rear_bc] if len(x) > 0]
-    adapter_length = sorted([len(y[1]) for x in search_list for y in x])[-1] # get the max length of the adapters
-    trim_part = search_part + adapter_length # adjust the search part based on the adapter length
     readlist2 = []
     for record in readlist:
         locations = set()
-        seq = record.seq[trim_part:-trim_part] # don't search begin and end part where bc is expected
+        seq = [x for x in record.seq] # make a list of the sequence
+        seq2 = seq[:]
         d = 0
         for lis in search_list:
-            score = []
-            for n, BC in lis:
-                k = len(BC)*error
-                m = 'HW'
-                a = 'locations'
-                s = align(BC, seq, m, a, k) 
-                if k > (s['editDistance']) > -1: # if a hit is found
-                    sl = filter_locations(s['locations'])
-                    score.append([s['editDistance'], sl])
-            if len(score) > 0:
-                if len(score) > 1:
-                    score.sort(key=lambda x: x[0])
-                    score = [x for x in score if x[0] == score[0][0]] # get the bc with the same editdistance
-                loc = [y for x, y in score] # get all possible locations
-                if len(loc) > 1:
-                    loc = get_longest_hit(loc)
-                if lis is middle_adapters:
-                    loc = [[y[0]+trim_part, y[1]+trim_part+1] for x in loc for y in x]
-                    loc = [y for x in loc for y in x]
-                elif lis is middle_front_bc:
-                    loc = [y[0]+trim_part for x in loc for y in x]
-                elif lis is middle_rear_bc:
-                    loc = [y[1]+trim_part for x in loc for y in x]
-                locations.update(loc)
+            """
+            if a 100% hit is found and there is also a 99% hit, it will only show the 100% hit
+            for that reason the script has to scan 2 or more times
+            """
+            k1 = -1 # minimum error
+            score = [' ']
+            while len(score) > 0:
+                score = []
+                for n, BC in lis:
+                    k = len(BC)*error
+                    m = 'HW'
+                    a = 'locations'
+                    s = align(BC, seq2, m, a, k) 
+                    if k > (s['editDistance']) > k1: # if a hit is found
+                        # print(s['locations'])
+                        sl = filter_locations(s['locations'])
+                        # print('--' + str(sl))
+                        score.append([s['editDistance'], sl])
+                if len(score) > 0:
+                    if len(score) > 1:
+                        score.sort(key=lambda x: x[0])
+                        score = [x for x in score if x[0] == score[0][0]] # get the bc with the same editdistance
+                    loc = [y for x, y in score] # get all possible locations
+
+                    for j in range(len(loc)):
+                        for n in loc[j]:
+                            # print(n)
+                            begin, end = n
+                            seq2[begin:end] = '-'*(end-begin) # remove the hit zone from the intermediate sequence
+                    
+                    if len(loc) > 1:
+                        loc = get_longest_hit(loc)
+                    if lis is middle_adapters:
+                        loc = [[y[0], y[1]+1] for x in loc for y in x]
+                        loc = [y for x in loc for y in x]
+                    elif lis is middle_front_bc:
+                        loc = [y[0] for x in loc for y in x]
+                    elif lis is middle_rear_bc:
+                        loc = [y[1]+1 for x in loc for y in x]
+                    locations.update(loc)
+                k1 += 1
         if len(locations) > 0:
+            if len(locations) > 2:
+                with middle_split.get_lock():
+                    middle_split.value += 1 # count number of seq cut in 3 or more pieces
             locations = list(locations)
             # print(locations)
             locations.sort()
@@ -405,8 +424,6 @@ def process_middle_barcodes(readlist, middle_adapters, middle_front_bc, middle_r
             basename = record.id
             # print('---\n>\n' + str(record.seq))
             for record in seqlist:
-                with middle_split.get_lock():
-                    middle_split.value += 1 # count number of cuts
                 if len(record.seq) >= min_length:
                     # print('>\n' + str(record.seq))
                     name = basename + '_' + str(d)
@@ -417,6 +434,7 @@ def process_middle_barcodes(readlist, middle_adapters, middle_front_bc, middle_r
             readlist2.append(record)
     readlist = readlist2
     return readlist
+
 #============================================================================== 
 # def split_middle_remove(record, locations):
 #     """
@@ -1751,9 +1769,10 @@ def process_queue():
     def todo(todoqueue):
         for readlist in iter(todoqueue.get, 'STOP'):# do stuff until infile.get returns "STOP"
             if seq_kit is not None:
+                readlist = remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_part)
                 if bool(middle) is True:
                     readlist = process_middle_barcodes(readlist, middle_adap, middle_front_bc, middle_rear_bc, error, search_part)
-                readlist = remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_part)
+                # readlist = remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_part)
                 with passed_reads.get_lock():
                     passed_reads.value += len(readlist)# count total number of reads passed length at end
             if bool(bc_bs) is True:
