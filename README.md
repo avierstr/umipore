@@ -1,7 +1,8 @@
 # umipore
 <mark>This is a work in progress:</mark>
 
-<mark>Demultiplexing based on barcodes , dual barcodes, primers is working, demultiplexing based on UMI's is still under construction.</mark>
+<mark>Demultiplexing based on barcodes , dual barcodes, primers is working good.  
+(Demultiplexing based on UMI's is still under construction.)</mark>
 
 Umipore is a tool to demultiplex Oxford Nanopore reads (or sequences from other platforms) based on barcodes, dual barcodes, primers or UMI's (unique molecular identifiers).
 
@@ -10,8 +11,8 @@ Umipore is a tool to demultiplex Oxford Nanopore reads (or sequences from other 
 Requirements:
 
 - Python 3
-- edlib: Lightweight, super fast C/C++ library for sequence alignment using edit (Levenshtein) distance ([https://pypi.org/project/edlib/#description](https://pypi.org/project/edlib/#description)) (`python3 -m pip install edlib`)
--   biopyton (`sudo apt-get install python3-biopython`)
+- edlib: Lightweight, super fast C/C++ library for sequence alignment using edit (Levenshtein) distance ([https://pypi.org/project/edlib/#description](https://pypi.org/project/edlib/#description)) (pip: `python3 -m pip install edlib` or conda: `conda install bioconda::python-edlib`) 
+-   biopyton (pip: `pip install biopython` or conda: `conda install biopython` or in linux `sudo apt-get install python3-biopython`)
 
 ### Licence
 GNU GPL 3.0
@@ -48,11 +49,14 @@ amplicon sequencing, MinION, Oxford Nanopore Technologies, barcode, dual barcode
 `-bc_os, --bc_one_side`: Search for barcode on one sides.  Default = False.
 
 ### Less important options:
+
 `-sf, --sformat`: File format to save the files.  Default: same as inputfile. (fasta or fastq).
 
 `-sp, --search_part`: Part at begin and end of sequence to search for adapters or barcodes.  Default = 150 bp longer than the adapter or barcode.
 
 `-er, --error`: Percentage error allowed in editdistance for adapters and barcodes. Default = 0.15 (15%).
+
+`-ca, --custom_adapters`: File with adapters from other sequencing technologies in case your data is not from Nanopore Sequencing.  (comma or tab separated csv file) 
 
 ### Command examples:
 
@@ -71,17 +75,16 @@ Demultiplex infile.fastq on 8 cores, reads with a minimum length of 500 bp, sequ
 
 `python3 umipore.py -i infile.fastq -np 8 -min 500 -sk lsk110 -bck nbd -bckn 6-12 -bc_os`
 
-Umipore will automatically split reads based on the middle adapter from the lsk110 kit in the command above.  If you also want to split on primers (amplicons ligated to each other, which happens a lot), you have to add a file named `middle.csv` in the input folder.  The file has the same format as the `custom.csv`.  You can reduce the number of primer possibilities in the file by masking the barcodes by NNN as in the example below.  In that cas only the last line (BCxx) has to be in the `middle.csv` file.  The file is automatically read by the script when present.
-```
-BC01,TCGAAGAAAGTTGTCGGTGTCTTTGTGACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGAAGAAAGTTGTCGGTGTCTTTGTGGATGGTCGATGACGGTTACCTTGTTACGACTT
-BC02,TCGTCGATTCCGTTTGTAGTCGTCTGTACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGTCGATTCCGTTTGTAGTCGTCTGTGATGGTCGATGACGGTTACCTTGTTACGACTT
-BC03,TCGGAGTCTTGTGTCCCAGTTACCAGGACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGGAGTCTTGTGTCCCAGTTACCAGGGATGGTCGATGACGGTTACCTTGTTACGACTT
-BC04,TCGTTCGGATTCTATCGTGTTTCCCTAACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGTTCGGATTCTATCGTGTTTCCCTAGATGGTCGATGACGGTTACCTTGTTACGACTT
-BCxx,TCGNNNNNNNNNNNNNNNNNNNNNNNNACGACGTTGTAGAGAGTTTGATCMTGGCTCAG,TCGNNNNNNNNNNNNNNNNNNNNNNNNGATGGTCGATGACGGTTACCTTGTTACGACTT
-```
+By default, Umipore will split reads based on the middle adapter from the LSK kit in the command above (turn off with command: `-ns, --no_split`).  It will also search and split reads if it finds the used barcodes in the middle of reads.
+
 ### Todo:
 
 ### Release notes:
+
+2025-05-22:
+- a separate file (adapters.txt) with Nanopore adapter and barcode sequences was needed in the same folder.  Now this information is embedded in the script.
+- option added to uses adapters from other sequencing technologies (`-ca, --custom_adapters`).
+
 2024-11-19:
 - Improvement in splitting reads based on middle adapters and primers.  When there was a 100% match and a 99% match in the read, it was only splitting the 100% match.  Now it is splitting all.
 
