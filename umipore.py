@@ -32,7 +32,149 @@ import re
 import psutil
 import urllib.request
 #==============================================================================
-version = '2024-11-19'  # version of the script
+adapters = {
+    'ATCGCCTACCGTGAC---BC---AGAGTTTGATCMTGGCTCAG': ['flank_16s_rab_forward'], 
+    'ATCGCCTACCGTGAC---BC---CGGTTACCTTGTTACGACTT': ['flank_16s_rab_reverse'], 
+    'GGTGCTG---BC---TTAACCT': ['flank_pbc'], 
+    'GCTTGGGTGTTTAACC---BC---GTTTTCGCATTTATCGTGAAACGCTTTCGCGTTTTTCGTGCGCCGCTTCA': ['flank_rbk'], 
+    'ATCGCCTACCGTGAC---BC---ACTTGCCTGTCGCTCTATCTTC': ['flank_pbk_forward'], 
+    'ATCGCCTACCGTGAC---BC---TTTCTGTTGGTGCTGATATTGC': ['flank_pbk_reverse'], 
+    'ATCGCCTACCGTGA---BC---TTGCCTGTCGCTCTATCTTC': ['flank_pcb_forward'], 
+    'ATCGCCTACCGTGA---BC---TCTGTTGGTGCTGATATTGC': ['flank_pcb_reverse'], 
+    'ATCGCCTACCGTGAC---BC---CGTTTTTCGTGCGCCGCTTC': ['flank_rpb'], 
+    'AAGGTTAA---BC---CAGCACCT': ['flank_nbd'], 
+    'MMTGTACTTCGTTCAGTTACGTATTGCT': ['adapter_lsk109_front', 'adapter_lsk114_front', 
+                                     'adapter_rapid', 'adapter_cas9_front', 'adapter_cdna_pcs_rapt', 
+                                     'adapter_cdna_dcs_amx_front'], 
+    'AGCAATACGTAACTGAACGAAGT': ['adapter_lsk109_rear'], 
+    'MMTGTACTTCGTTCAGTTACGTATTGC': ['adapter_lsk110_front'], 
+    'AGCAATACGTAACTGAAC': ['adapter_lsk110_rear'], 
+    'GCAATACGTAACTGAACGAAGTACAGG': ['adapter_lsk114_rear'], 
+    'ACTTCGTTCAGTTACGTATTGCT': ['adapter_middle'], 
+    'GCAATACGTAACTGAACGAAGT': ['adapter_cas9_rear', 'adapter_cdna_dcs_amx_rear'], 
+    'GGCTTCTTCTTGCTCTTAGGTAGTAGGTTC': ['adapter_rna_rtaf'], 
+    'GAGGCGAGCGGTCAATTTTCCTAAGAGCAAGAAGAAGCC': ['adapter_rna_rtar'], 
+    'ATGATGCAAGATACGCAC': ['adapter_rna_rmxf'], 
+    'GAGGCGAGCGGTCAATTTGCAATATCAGCACCAACAGAAACAACCATCGTCTATCCCTCATCATCAGAACCTACTA': ['adapter_rna_rmxr'], 
+    'CTTGCCTGTCGCTCTATCTTCAGAGGAG': ['adapter_cdna_pcs_rtp'], 
+    'TTTCTGTTGGTGCTGATATTGCTGGG': ['adapter_cdna_pcs_sspii', 'adapter_cdna_dcs_ssp'], 
+    'ATCGCCTACCGTGACAAGAAAGTTGTCGGTGTCTTTGTGACTTGCCTGTCGCTCTATCTTC': ['adapter_cdna_pcs_front'], 
+    'ATCGCCTACCGTGACAAGAAAGTTGTCGGTGTCTTTGTGTTTCTGTTGGTGCTGATATTG': ['adapter_cdna_pcs_rear'], 
+    'CTTGCGGGCGGCGGACTCTCCTCTGAAGATAGAGCGACAGGCAAG': ['adapter_cdna_pcs_rt'], 
+    'ACTTGCCTGTCGCTCTATCTTC': ['adapter_cdna_dcs_vnp'], 
+    'CACAAAGACACCGACAACTTTCTT': ['bc01_nbd'], 
+    'ACAGACGACTACAAACGGAATCGA': ['bc02_nbd'], 
+    'CCTGGTAACTGGGACACAAGACTC': ['bc03_nbd'], 
+    'TAGGGAAACACGATAGAATCCGAA': ['bc04_nbd'], 
+    'AAGGTTACACAAACCCTGGACAAG': ['bc05_nbd'], 
+    'GACTACTTTCTGCCTTTGCGAGAA': ['bc06_nbd'], 
+    'AAGGATTCATTCCCACGGTAACAC': ['bc07_nbd'], 
+    'ACGTAACTTGGTTTGTTCCCTGAA': ['bc08_nbd'], 
+    'AACCAAGACTCGCTGTGCCTAGTT': ['bc09_nbd'], 
+    'GAGAGGACAAAGGTTTCAACGCTT': ['bc10_nbd'], 
+    'TCCATTCCCTCCGATAGATGAAAC': ['bc11_nbd'], 
+    'TCCGATTCTGCTTCTTTCTACCTG': ['bc12_nbd'], 
+    'AGAACGACTTCCATACTCGTGTGA': ['bc13_nbd', 'bc13_rbk_pbc_rab_16s_pcb'], 
+    'AACGAGTCTCTTGGGACCCATAGA': ['bc14_nbd', 'bc14_rbk_pbc_rab_16s_pcb'], 
+    'AGGTCTACCTCGCTAACACCACTG': ['bc15_nbd', 'bc15_rbk_pbc_rab_16s_pcb'], 
+    'CGTCAACTGACAGTGGTTCGTACT': ['bc16_nbd', 'bc16_rbk_pbc_rab_16s_pcb'], 
+    'ACCCTCCAGGAAAGTACCTCTGAT': ['bc17_nbd', 'bc17_rbk_pbc_rab_16s_pcb'], 
+    'CCAAACCCAACAACCTAGATAGGC': ['bc18_nbd', 'bc18_rbk_pbc_rab_16s_pcb'], 
+    'GTTCCTCGTGCAGTGTCAAGAGAT': ['bc19_nbd', 'bc19_rbk_pbc_rab_16s_pcb'], 
+    'TTGCGTCCTGTTACGAGAACTCAT': ['bc20_nbd', 'bc20_rbk_pbc_rab_16s_pcb'], 
+    'GAGCCTCTCATTGTCCGTTCTCTA': ['bc21_nbd', 'bc21_rbk_pbc_rab_16s_pcb'], 
+    'ACCACTGCCATGTATCAAAGTACG': ['bc22_nbd', 'bc22_rbk_pbc_rab_16s_pcb'], 
+    'CTTACTACCCAGTGAACCTCCTCG': ['bc23_nbd', 'bc23_rbk_pbc_rab_16s_pcb'], 
+    'GCATAGTTCTGCATGATGGGTTAG': ['bc24_nbd', 'bc24_rbk_pbc_rab_16s_pcb'], 
+    'GTAAGTTGGGTATGCAACGCAATG': ['bc25_nbd', 'bc25_rbk_pbc'], 
+    'CATACAGCGACTACGCATTCTCAT': ['bc26_nbd', 'bc26_rbk_pbc'], 
+    'CGACGGTTAGATTCACCTCTTACA': ['bc27_nbd', 'bc27_rbk_pbc'], 
+    'TGAAACCTAAGAAGGCACCGTATC': ['bc28_nbd', 'bc28_rbk_pbc'], 
+    'CTAGACACCTTGGGTTGACAGACC': ['bc29_nbd', 'bc29_rbk_pbc'], 
+    'TCAGTGAGGATCTACTTCGACCCA': ['bc30_nbd', 'bc30_rbk_pbc'], 
+    'TGCGTACAGCAATCAGTTACATTG': ['bc31_nbd', 'bc31_rbk_pbc'], 
+    'CCAGTAGAAGTCCGACAACGTCAT': ['bc32_nbd', 'bc32_rbk_pbc'], 
+    'CAGACTTGGTACGGTTGGGTAACT': ['bc33_nbd', 'bc33_rbk_pbc'], 
+    'GGACGAAGAACTCAAGTCAAAGGC': ['bc34_nbd', 'bc34_rbk_pbc'], 
+    'CTACTTACGAAGCTGAGGGACTGC': ['bc35_nbd', 'bc35_rbk_pbc'], 
+    'ATGTCCCAGTTAGAGGAGGAAACA': ['bc36_nbd', 'bc36_rbk_pbc'], 
+    'GCTTGCGATTGATGCTTAGTATCA': ['bc37_nbd', 'bc37_rbk_pbc'], 
+    'ACCACAGGAGGACGATACAGAGAA': ['bc38_nbd', 'bc38_rbk_pbc'], 
+    'CCACAGTGTCAACTAGAGCCTCTC': ['bc39_nbd', 'bc39_rbk_pbc'], 
+    'TAGTTTGGATGACCAAGGATAGCC': ['bc40_nbd', 'bc40_rbk_pbc'], 
+    'GGAGTTCGTCCAGAGAAGTACACG': ['bc41_nbd', 'bc41_rbk_pbc'], 
+    'CTACGTGTAAGGCATACCTGCCAG': ['bc42_nbd', 'bc42_rbk_pbc'], 
+    'CTTTCGTTGTTGACTCGACGGTAG': ['bc43_nbd', 'bc43_rbk_pbc'], 
+    'AGTAGAAAGGGTTCCTTCCCACTC': ['bc44_nbd', 'bc44_rbk_pbc'], 
+    'GATCCAACAGAGATGCCTTCAGTG': ['bc45_nbd', 'bc45_rbk_pbc'], 
+    'GCTGTGTTCCACTTCATTCTCCTG': ['bc46_nbd', 'bc46_rbk_pbc'], 
+    'GTGCAACTTTCCCACAGGTAGTTC': ['bc47_nbd', 'bc47_rbk_pbc'], 
+    'CATCTGGAACGTGGTACACCTGTA': ['bc48_nbd', 'bc48_rbk_pbc'], 
+    'ACTGGTGCAGCTTTGAACATCTAG': ['bc49_nbd', 'bc49_rbk_pbc'], 
+    'ATGGACTTTGGTAACTTCCTGCGT': ['bc50_nbd', 'bc50_rbk_pbc'], 
+    'GTTGAATGAGCCTACTGGGTCCTC': ['bc51_nbd', 'bc51_rbk_pbc'], 
+    'TGAGAGACAAGATTGTTCGTGGAC': ['bc52_nbd', 'bc52_rbk_pbc'], 
+    'AGATTCAGACCGTCTCATGCAAAG': ['bc53_nbd', 'bc53_rbk_pbc'], 
+    'CAAGAGCTTTGACTAAGGAGCATG': ['bc54_nbd', 'bc54_rbk_pbc'], 
+    'TGGAAGATGAGACCCTGATCTACG': ['bc55_nbd', 'bc55_rbk_pbc'], 
+    'TCACTACTCAACAGGTGGCATGAA': ['bc56_nbd', 'bc56_rbk_pbc'], 
+    'GCTAGGTCAATCTCCTTCGGAAGT': ['bc57_nbd', 'bc57_rbk_pbc'], 
+    'CAGGTTACTCCTCCGTGAGTCTGA': ['bc58_nbd', 'bc58_rbk_pbc'], 
+    'TCAATCAAGAAGGGAAAGCAAGGT': ['bc59_nbd', 'bc59_rbk_pbc'], 
+    'CATGTTCAACCAAGGCTTCTATGG': ['bc60_nbd', 'bc60_rbk_pbc'], 
+    'AGAGGGTACTATGTGCCTCAGCAC': ['bc61_nbd', 'bc61_rbk_pbc'], 
+    'CACCCACACTTACTTCAGGACGTA': ['bc62_nbd', 'bc62_rbk_pbc'], 
+    'TTCTGAAGTTCCTGGGTCTTGAAC': ['bc63_nbd', 'bc63_rbk_pbc'], 
+    'GACAGACACCGTTCATCGACTTTC': ['bc64_nbd', 'bc64_rbk_pbc'], 
+    'TTCTCAGTCTTCCTCCAGACAAGG': ['bc65_nbd', 'bc65_rbk_pbc'], 
+    'CCGATCCTTGTGGCTTCTAACTTC': ['bc66_nbd', 'bc66_rbk_pbc'], 
+    'GTTTGTCATACTCGTGTGCTCACC': ['bc67_nbd', 'bc67_rbk_pbc'], 
+    'GAATCTAAGCAAACACGAAGGTGG': ['bc68_nbd', 'bc68_rbk_pbc'], 
+    'TACAGTCCGAGCCTCATGTGATCT': ['bc69_nbd', 'bc69_rbk_pbc'], 
+    'ACCGAGATCCTACGAATGGAGTGT': ['bc70_nbd', 'bc70_rbk_pbc'], 
+    'CCTGGGAGCATCAGGTAGTAACAG': ['bc71_nbd', 'bc71_rbk_pbc'], 
+    'TAGCTGACTGTCTTCCATACCGAC': ['bc72_nbd', 'bc72_rbk_pbc'], 
+    'AAGAAACAGGATGACAGAACCCTC': ['bc73_nbd', 'bc73_rbk_pbc'], 
+    'TACAAGCATCCCAACACTTCCACT': ['bc74_nbd', 'bc74_rbk_pbc'], 
+    'GACCATTGTGATGAACCCTGTTGT': ['bc75_nbd', 'bc75_rbk_pbc'], 
+    'ATGCTTGTTACATCAACCCTGGAC': ['bc76_nbd', 'bc76_rbk_pbc'], 
+    'CGACCTGTTTCTCAGGGATACAAC': ['bc77_nbd', 'bc77_rbk_pbc'], 
+    'AACAACCGAACCTTTGAATCAGAA': ['bc78_nbd', 'bc78_rbk_pbc'], 
+    'TCTCGGAGATAGTTCTCACTGCTG': ['bc79_nbd', 'bc79_rbk_pbc'], 
+    'CGGATGAACATAGGATAGCGATTC': ['bc80_nbd', 'bc80_rbk_pbc'], 
+    'CCTCATCTTGTGAAGTTGTTTCGG': ['bc81_nbd', 'bc81_rbk_pbc'], 
+    'ACGGTATGTCGAGTTCCAGGACTA': ['bc82_nbd', 'bc82_rbk_pbc'], 
+    'TGGCTTGATCTAGGTAAGGTCGAA': ['bc83_nbd', 'bc83_rbk_pbc'], 
+    'GTAGTGGACCTAGAACCTGTGCCA': ['bc84_nbd', 'bc84_rbk_pbc'], 
+    'AACGGAGGAGTTAGTTGGATGATC': ['bc85_nbd', 'bc85_rbk_pbc'], 
+    'AGGTGATCCCAACAAGCGTAAGTA': ['bc86_nbd', 'bc86_rbk_pbc'], 
+    'TACATGCTCCTGTTGTTAGGGAGG': ['bc87_nbd', 'bc87_rbk_pbc'], 
+    'TCTTCTACTACCGATCCGAAGCAG': ['bc88_nbd', 'bc88_rbk_pbc'], 
+    'ACAGCATCAATGTTTGGCTAGTTG': ['bc89_nbd', 'bc89_rbk_pbc'], 
+    'GATGTAGAGGGTACGGTTTGAGGC': ['bc90_nbd', 'bc90_rbk_pbc'], 
+    'GGCTCCATAGGAACTCACGCTACT': ['bc91_nbd', 'bc91_rbk_pbc'], 
+    'TTGTGAGTGGAAAGATACAGGACC': ['bc92_nbd', 'bc92_rbk_pbc'], 
+    'AGTTTCCATCACTTCAGACTTGGG': ['bc93_nbd', 'bc93_rbk_pbc'], 
+    'GATTGTCCTCAAACTGCCACCTAC': ['bc94_nbd', 'bc94_rbk_pbc'], 
+    'CCTGTCTGGAAGAAGAATGGACTT': ['bc95_nbd', 'bc95_rbk_pbc'], 
+    'CTGAACGGTCATAGAGTCCACCAT': ['bc96_nbd', 'bc96_rbk_pbc'], 
+    'AAGAAAGTTGTCGGTGTCTTTGTG': ['bc01_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'TCGATTCCGTTTGTAGTCGTCTGT': ['bc02_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'GAGTCTTGTGTCCCAGTTACCAGG': ['bc03_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'TTCGGATTCTATCGTGTTTCCCTA': ['bc04_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'CTTGTCCAGGGTTTGTGTAACCTT': ['bc05_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'TTCTCGCAAAGGCAGAAAGTAGTC': ['bc06_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'GTGTTACCGTGGGAATGAATCCTT': ['bc07_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'TTCAGGGAACAAACCAAGTTACGT': ['bc08_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'AACTAGGCACAGCGAGTCTTGGTT': ['bc09_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'AAGCGTTGAAACCTTTGTCCTCTC': ['bc10_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'GTTTCATCTATCGGAGGGAATGGA': ['bc11_rbk_pbc_pbk_rpb_rab_16s_pcb'], 
+    'CAGGTAGAAAGAAGCAGAATCGGA': ['bc12_rbk_pbc_pbk_rab_16s_pcb'], 
+    'GTTGAGTTACAAAGCACCGATCAG': ['bc12a_rpb']}
+
+
+#==============================================================================
+version = '2025-05-22'  # version of the script
 #==============================================================================
 def check_version(version):
     try:   
@@ -123,6 +265,9 @@ def get_arguments():
     parser.add_argument('-sk', '--seq_kit', type = lambda s : s.lower(), 
                         choices = ['lsk', 'lsk109', 'lsk110', 'lsk114'],
                         help='Sequencing kit used in experiment.')
+    parser.add_argument('-ca', '--custom_adapters', type = str, 
+                        help='File with adapters from other sequencing technologies '\
+                            'in case your data is not from Nanopore Sequencing')
     parser.add_argument('-ns', '--no_split', action = 'store_false', default=True,
                         help='Split the reads on middle adapter. Default = True')  
 
@@ -167,7 +312,7 @@ def save_arguments(): # save all settings in the result.txt file
     outputfolder = args.outputfolder
     with open(os.path.join(outputfolder,'results.txt'), 'a') as rf:
         rf.write('-----------------------------------------------------------\n')
-        rf.write('amplicon_sorter version: ' + version + '\n')  
+        rf.write('umipore version: ' + version + '\n')  
         rf.write('-----------------------------------------------------------\n')
         rf.write('- date and time = ' + datetime.datetime.now().strftime(
             "%B %d, %Y, %I:%M%p") + '\n')    
@@ -244,18 +389,19 @@ def read_adapters(seq_kit):
     load all adapters, if adapters are the same for multiple kits, only load 
     them once but assign multiple names.
     '''
-    adapters = {}
-    with open(os.path.join(infolder, 'adapters.txt'), 'r') as adap:
-        for record in SeqIO.parse(adap, "fasta"):
-            if not record.id.startswith('#'): # comments in adapter file
-                name = record.id.lower()
-                seq = str(record.seq).upper() 
-                if seq in adapters:
-                    adapt = adapters.get(seq)
-                    adapt.append(name)
-                    adapters[seq] = adapt
-                else:
-                    adapters[seq] = [name]
+    # adapters = {}
+    # with open(os.path.join(infolder, 'adapters.txt'), 'r') as adap:
+    #     for record in SeqIO.parse(adap, "fasta"):
+    #         if not record.id.startswith('#'): # comments in adapter file
+    #             name = record.id.lower()
+    #             seq = str(record.seq).upper() 
+    #             if seq in adapters:
+    #                 adapt = adapters.get(seq)
+    #                 adapt.append(name)
+    #                 adapters[seq] = adapt
+    #             else:
+    #                 adapters[seq] = [name]
+    
     # search adapters needed for this analyses
     middle_adap = {}
     front_adap = {}
@@ -272,30 +418,83 @@ def read_adapters(seq_kit):
                     put_in_dict(k, n, rear_adap)
                     
     middle_adap_list = [[middle_adap[k][0], k] for k in middle_adap]
+    middle_front_bc = middle_rear_bc = []
+    return adapters, front_adap, rear_adap, middle_adap_list, middle_front_bc, middle_rear_bc
+#==============================================================================
+def read_custom_adap(custom_adap):
     '''
-    Check if a file with "middle barcodes" is present and load them in a list.
+    load custom adapters from file (only needed if other sequencing technologies were
+    used like Illumina, Pacbio,...)
+    '''
+    adapters = {}
+    with open(os.path.join(infolder, custom_adap), newline='') as csvfile:
+        dialect = csv.Sniffer().sniff(csvfile.read()) # ckeck if comma or tab separated
+        csvfile.seek(0) # got back to begin of file
+        reader = csv.reader(csvfile, dialect)
+        for row in reader:
+            if any(x.strip() for x in row): # remove empty lines
+                if not row[0].startswith('#'): # comment in line
+                    n = 'adapter_' + row[0].lower() + '_front'
+                    k = row[1].strip().replace(' ','').upper()
+                    if len(k) > 0:
+                        put_in_dict(k, n, adapters) # front adapter
+                    n = 'adapter_' + row[0].lower() + '_rear'
+                    k = row[2].strip().replace(' ', '').upper()
+                    if len(k) > 0:
+                        put_in_dict(k, n, adapters) # rear adapter      
+
+    # search adapters needed for this analyses
+    middle_adap = {}
+    front_adap = {}
+    rear_adap = {}
+    for k in adapters:
+        for n in adapters[k]:
+            # for m in middle_kit: # find middle adapters
+            if n.lower().find('middle') != -1: 
+                put_in_dict(k, n, middle_adap)
+            if n.lower().find('adapter') != -1 and n.lower().find('front') != -1 and n.lower().find('middle') == -1:
+                put_in_dict(k, n, front_adap)
+            if n.lower().find('adapter') != -1 and n.lower().find('rear') != -1 and n.lower().find('middle') == -1:
+                put_in_dict(k, n, rear_adap)
+                    
+    middle_adap_list = [[middle_adap[k][0], k] for k in middle_adap]
+    middle_front_bc = middle_rear_bc = []
+    return adapters, front_adap, rear_adap, middle_adap_list, middle_front_bc, middle_rear_bc
+#==============================================================================
+def create_middle_bc_list(used_bc_list):
+    '''
+    Create a list with degenarated "middle barcodes".
     Convert the list to front and rear middle barcodes
     '''
-    try:   
-        middle_bc_list = []
-        with open(os.path.join(infolder, 'middle.csv'), newline='') as csvfile:
-               dialect = csv.Sniffer().sniff(csvfile.read()) # ckeck if comma or tab separated
-               csvfile.seek(0) # got back to begin of file
-               reader = csv.reader(csvfile, dialect)
-               for row in reader:
-                   if any(x.strip() for x in row): # remove empty lines
-                       if not row[0].startswith('#'): # comment in line
-                           name = ['f', row[0]]
-                           fbc = row[1].strip().replace(' ','').upper()
-                           middle_bc_list.append([[name], fbc])
-                           name = ['r', row[0]]
-                           rbc = row[2].strip().replace(' ', '').upper()
-                           middle_bc_list.append([[name], rbc])
-        middle_front_bc, middle_rear_bc = create_search_list(middle_bc_list)
-    except FileNotFoundError:
-        print('No file with middle barcodes present.')
-        middle_front_bc = middle_rear_bc = []
-    return adapters, front_adap, rear_adap, middle_adap_list, middle_front_bc, middle_rear_bc
+    middle_dict = {}
+    middle_bc_list = []
+    for x in used_bc_list:
+        put_in_dict(x[1][-16:-1], x[1], middle_dict) # check the last 15 bases
+    if len(used_bc_list)*0.2 < len(middle_dict): # if approximate same amount as in list -> no degeneration
+        middle_dict = {}
+        for x in used_bc_list:
+            put_in_dict(x[1][-6:-1], x[1], middle_dict) # check the last 5 bases
+    if len(used_bc_list)*0.2 < len(middle_dict): # if approximate same amount as in list -> no degeneration
+        middle_dict = {}
+        for x in used_bc_list:
+            put_in_dict(x[1], x[1], middle_dict) # use them complete
+    for i, x in enumerate(middle_dict.values()): 
+        # print(x)
+        middle_seq = []
+        p = -1
+        try:
+            while True:
+                b = set([z[p] for z in x])
+                if len(b) > 1:
+                    middle_seq.insert(0, 'N')
+                else:
+                    middle_seq.insert(0, b.pop())
+                p -= 1
+        except IndexError:
+            pass
+        middle_bc_list.append([[[' ', 'middle_' + str(i)]], ''.join(middle_seq)])
+    middle_front_bc, middle_rear_bc = create_search_list(middle_bc_list)
+    return middle_front_bc, middle_rear_bc
 #==============================================================================
 def filter_locations(locations):
     """
@@ -381,7 +580,7 @@ def process_middle_barcodes(readlist, middle_adapters, middle_front_bc, middle_r
             while len(score) > 0:
                 score = []
                 for n, BC in lis:
-                    k = len(BC)*error
+                    k = (len(BC)-BC.count('N'))*error # N matches everything, don't count those as length
                     m = 'HW'
                     a = 'locations'
                     s = align(BC, seq2, m, a, k) 
@@ -494,7 +693,7 @@ def remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_par
         score = []
         fr = str(record.seq)[0:search_part]
         for BC in front_adap:
-            k = len(BC)*error
+            k = (len(BC)-BC.count('N'))*error # N matches everythin, don't count those as length
             m = 'HW'
             a = 'locations'
             s = align(BC, fr, m, a, k) 
@@ -511,7 +710,7 @@ def remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_par
         score = []
         er = str(record.seq)[-search_part:]
         for BC in rear_adap:
-            k = len(BC)*error
+            k = (len(BC)-BC.count('N'))*error # N matches everythin, don't count those as length
             m = 'HW'
             a = 'locations'
             s = align(BC, er, m, a, k) 
@@ -893,7 +1092,7 @@ def find_barcode(seq, bc_list, error):
     for item in bc_list:
         name = item[0]
         BC = item[1]
-        k = len(BC)*error
+        k = (len(BC)-BC.count('N'))*error # N matches everythin, don't count those as length
         m = 'HW'
         a = 'locations'
         s = align(BC, seq, m, a, k) 
@@ -935,7 +1134,7 @@ def find_barcode_1(seq, bc_list, error):
     for item in bc_list:
         name = item[0]
         BC = item[1]
-        k = len(BC)*error
+        k = (len(BC)-BC.count('N'))*error # N matches everythin, don't count those as length
         m = 'HW'
         a = 'locations'
         s = align(BC, seq, m, a, k) 
@@ -1770,9 +1969,8 @@ def process_queue():
         for readlist in iter(todoqueue.get, 'STOP'):# do stuff until infile.get returns "STOP"
             if seq_kit is not None:
                 readlist = remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_part)
-                if bool(middle) is True:
-                    readlist = process_middle_barcodes(readlist, middle_adap, middle_front_bc, middle_rear_bc, error, search_part)
-                # readlist = remove_front_end_adapters(readlist, front_adap, rear_adap, error, search_part)
+            if bool(middle) is True:
+                readlist = process_middle_barcodes(readlist, middle_adap, middle_front_bc, middle_rear_bc, error, search_part)
                 with passed_reads.get_lock():
                     passed_reads.value += len(readlist)# count total number of reads passed length at end
             if bool(bc_bs) is True:
@@ -1942,6 +2140,7 @@ if __name__ == '__main__':
         infolder_file_list = args.input
         nprocesses = args.nprocesses
         seq_kit = args.seq_kit # sequencing kit used
+        custom_adap = args.custom_adapters
         init_sformat = args.sformat.lower() # format to save file
         bc_kit_numbers = args.bc_kit_numbers
         stopper = Event() # initialize event to signal stop
@@ -1976,6 +2175,8 @@ if __name__ == '__main__':
                 except FileExistsError:
                     pass
         adapters, front_adap, rear_adap, middle_adap, middle_front_bc, middle_rear_bc = read_adapters(seq_kit)
+        if bool(custom_adap)is True:
+           adapters, front_adap, rear_adap, middle_adap, middle_front_bc, middle_rear_bc = read_custom_adap(custom_adap)
         # --------- BARCODE PART -----------------
         if bool(bc_kit) is True and bool(bc_custom) is False: # if a barcode kit is given
             used_bc = read_barcodes(adapters, bc_kit, bc_kit_numbers)
@@ -1993,6 +2194,7 @@ if __name__ == '__main__':
         hier nog combine barcodes bijvoegen: umi en barcode aan geligeerd
         """
         if bool(bc_kit) is True or bool(bc_custom) is True or bool(umi) is True: # if barcodes are used, make list to search front and rear of a read
+            middle_front_bc, middle_rear_bc = create_middle_bc_list(used_bc) # if BC are used, create list with middle adapters
             front_bc, rear_bc = create_search_list(used_bc)
         
 
@@ -2030,8 +2232,6 @@ if __name__ == '__main__':
         # start the producer
         q = Thread(target=queue, args=(infile,)) # start reading file(s) in queue
         q.start() 
-        
-       
 
         q.join() # wait for producer to finish
         c.join() # wait for consumer to finish
@@ -2052,4 +2252,4 @@ if __name__ == '__main__':
             
     except KeyboardInterrupt:
         sys.exit()
-        # time python3 demultiplex2023_08_18.py -i sample_unk.fastq -o output -sk lsk109 -min 3400 -bcc custom.csv -np 1
+
